@@ -1,17 +1,14 @@
 ﻿using System;
-using System.Linq;
 
 class LibraryManagementSystem
 {
-    // Variables to store up to 5 book titles
-    static string book1 = "";
-    static string book2 = "";
-    static string book3 = "";
-    static string book4 = "";
-    static string book5 = "";
-    
-    // Track the number of books currently in the library
+    const int MaxBooks = 5;
+    const int MaxBorrowedBooks = 3;
+
+    static string[] books = new string[MaxBooks];
+    static bool[] isCheckedOut = new bool[MaxBooks];
     static int bookCount = 0;
+    static int borrowedCount = 0;
 
     static void Main()
     {
@@ -24,7 +21,7 @@ class LibraryManagementSystem
         while (running)
         {
             DisplayMenu();
-            string choice = Console.ReadLine();
+            string choice = Console.ReadLine() ?? "";
 
             switch (choice)
             {
@@ -38,6 +35,15 @@ class LibraryManagementSystem
                     DisplayBooks();
                     break;
                 case "4":
+                    SearchBook();
+                    break;
+                case "5":
+                    CheckOutBook();
+                    break;
+                case "6":
+                    CheckInBook();
+                    break;
+                case "7":
                     running = false;
                     Console.WriteLine("\nThank you for using the Library Management System. Goodbye!");
                     break;
@@ -54,20 +60,23 @@ class LibraryManagementSystem
         Console.WriteLine("1. Add a Book");
         Console.WriteLine("2. Remove a Book");
         Console.WriteLine("3. Display All Books");
-        Console.WriteLine("4. Exit");
-        Console.Write("\nEnter your choice (1-4): ");
+        Console.WriteLine("4. Search for a Book");
+        Console.WriteLine("5. Check Out a Book");
+        Console.WriteLine("6. Check In a Book");
+        Console.WriteLine("7. Exit");
+        Console.Write("\nEnter your choice (1-7): ");
     }
 
     static void AddBook()
     {
-        if (bookCount >= 5)
+        if (bookCount >= MaxBooks)
         {
             Console.WriteLine("\n[ERROR] Library is full! You can only store up to 5 books.\n");
             return;
         }
 
         Console.Write("\nEnter book title: ");
-        string title = Console.ReadLine();
+        string title = Console.ReadLine() ?? "";
 
         if (string.IsNullOrWhiteSpace(title))
         {
@@ -75,27 +84,10 @@ class LibraryManagementSystem
             return;
         }
 
-        // Add book to the next available slot
-        switch (bookCount)
-        {
-            case 0:
-                book1 = title;
-                break;
-            case 1:
-                book2 = title;
-                break;
-            case 2:
-                book3 = title;
-                break;
-            case 3:
-                book4 = title;
-                break;
-            case 4:
-                book5 = title;
-                break;
-        }
-
+        books[bookCount] = title.Trim();
+        isCheckedOut[bookCount] = false;
         bookCount++;
+
         Console.WriteLine($"[SUCCESS] Book '{title}' added to the library.\n");
     }
 
@@ -108,7 +100,7 @@ class LibraryManagementSystem
         }
 
         Console.Write("\nEnter the title of the book to remove: ");
-        string title = Console.ReadLine();
+        string title = Console.ReadLine() ?? "";
 
         if (string.IsNullOrWhiteSpace(title))
         {
@@ -116,75 +108,54 @@ class LibraryManagementSystem
             return;
         }
 
-        // Search for the book and remove it
-        if (book1 == title)
-        {
-            RemoveBookAtPosition(1);
-        }
-        else if (book2 == title)
-        {
-            RemoveBookAtPosition(2);
-        }
-        else if (book3 == title)
-        {
-            RemoveBookAtPosition(3);
-        }
-        else if (book4 == title)
-        {
-            RemoveBookAtPosition(4);
-        }
-        else if (book5 == title)
-        {
-            RemoveBookAtPosition(5);
-        }
-        else
+        int index = FindBookIndex(title);
+
+        if (index < 0)
         {
             Console.WriteLine($"\n[ERROR] Book '{title}' not found in the library.\n");
+            return;
         }
+
+        if (isCheckedOut[index])
+        {
+            borrowedCount = Math.Max(0, borrowedCount - 1);
+        }
+
+        RemoveBookAtIndex(index);
     }
 
-    static void RemoveBookAtPosition(int position)
+    static int FindBookIndex(string title)
     {
-        string removedBook = "";
+        if (string.IsNullOrWhiteSpace(title))
+            return -1;
 
-        // Remove the book at the specified position and shift remaining books
-        if (position == 1)
+        title = title.Trim();
+
+        for (int i = 0; i < bookCount; i++)
         {
-            removedBook = book1;
-            book1 = book2;
-            book2 = book3;
-            book3 = book4;
-            book4 = book5;
-            book5 = "";
-        }
-        else if (position == 2)
-        {
-            removedBook = book2;
-            book2 = book3;
-            book3 = book4;
-            book4 = book5;
-            book5 = "";
-        }
-        else if (position == 3)
-        {
-            removedBook = book3;
-            book3 = book4;
-            book4 = book5;
-            book5 = "";
-        }
-        else if (position == 4)
-        {
-            removedBook = book4;
-            book4 = book5;
-            book5 = "";
-        }
-        else if (position == 5)
-        {
-            removedBook = book5;
-            book5 = "";
+            if (string.Equals(books[i], title, StringComparison.OrdinalIgnoreCase))
+            {
+                return i;
+            }
         }
 
+        return -1;
+    }
+
+    static void RemoveBookAtIndex(int index)
+    {
+        string removedBook = books[index];
+
+        for (int i = index; i < MaxBooks - 1; i++)
+        {
+            books[i] = books[i + 1];
+            isCheckedOut[i] = isCheckedOut[i + 1];
+        }
+
+        books[MaxBooks - 1] = string.Empty;
+        isCheckedOut[MaxBooks - 1] = false;
         bookCount--;
+
         Console.WriteLine($"[SUCCESS] Book '{removedBook}' removed from the library.\n");
     }
 
@@ -200,15 +171,110 @@ class LibraryManagementSystem
             return;
         }
 
-        Console.WriteLine($"Total Books: {bookCount}\n");
+        Console.WriteLine($"Total Books: {bookCount}");
+        Console.WriteLine($"Borrowed Books: {borrowedCount}/{MaxBorrowedBooks}\n");
 
-        int displayCount = 1;
-        if (!string.IsNullOrEmpty(book1)) Console.WriteLine($"{displayCount++}. {book1}");
-        if (!string.IsNullOrEmpty(book2)) Console.WriteLine($"{displayCount++}. {book2}");
-        if (!string.IsNullOrEmpty(book3)) Console.WriteLine($"{displayCount++}. {book3}");
-        if (!string.IsNullOrEmpty(book4)) Console.WriteLine($"{displayCount++}. {book4}");
-        if (!string.IsNullOrEmpty(book5)) Console.WriteLine($"{displayCount++}. {book5}");
+        for (int i = 0; i < bookCount; i++)
+        {
+            string status = isCheckedOut[i] ? "(Checked Out)" : "(Available)";
+            Console.WriteLine($"{i + 1}. {books[i]} {status}");
+        }
 
         Console.WriteLine("========================================\n");
+    }
+
+    static void SearchBook()
+    {
+        if (bookCount == 0)
+        {
+            Console.WriteLine("\n[ERROR] No books in the library to search.\n");
+            return;
+        }
+
+        Console.Write("\nEnter the title to search for: ");
+        string title = Console.ReadLine() ?? "";
+
+        int index = FindBookIndex(title);
+
+        if (index < 0)
+        {
+            Console.WriteLine($"\n[INFO] '{title}' is not in the collection.\n");
+            return;
+        }
+
+        if (isCheckedOut[index])
+        {
+            Console.WriteLine($"\n[INFO] '{books[index]}' is found, but it is currently checked out.\n");
+        }
+        else
+        {
+            Console.WriteLine($"\n[INFO] '{books[index]}' is found and available.\n");
+        }
+    }
+
+    static void CheckOutBook()
+    {
+        if (bookCount == 0)
+        {
+            Console.WriteLine("\n[ERROR] No books available to check out.\n");
+            return;
+        }
+
+        if (borrowedCount >= MaxBorrowedBooks)
+        {
+            Console.WriteLine($"\n[ERROR] You have reached the limit of {MaxBorrowedBooks} borrowed books. Return a book before checking out another.\n");
+            return;
+        }
+
+        Console.Write("\nEnter the title of the book to check out: ");
+        string title = Console.ReadLine() ?? "";
+
+        int index = FindBookIndex(title);
+
+        if (index < 0)
+        {
+            Console.WriteLine($"\n[ERROR] Book '{title}' not found in the library.\n");
+            return;
+        }
+
+        if (isCheckedOut[index])
+        {
+            Console.WriteLine($"\n[ERROR] '{books[index]}' is already checked out.\n");
+            return;
+        }
+
+        isCheckedOut[index] = true;
+        borrowedCount++;
+        Console.WriteLine($"\n[SUCCESS] '{books[index]}' has been checked out. You now have {borrowedCount}/{MaxBorrowedBooks} books borrowed.\n");
+    }
+
+    static void CheckInBook()
+    {
+        if (bookCount == 0)
+        {
+            Console.WriteLine("\n[ERROR] No books in the library to check in.\n");
+            return;
+        }
+
+        Console.Write("\nEnter the title of the book to check in: ");
+        string title = Console.ReadLine() ?? "";
+
+        int index = FindBookIndex(title);
+
+        if (index < 0)
+        {
+            Console.WriteLine($"\n[ERROR] Book '{title}' not found in the library.\n");
+            return;
+        }
+
+        if (!isCheckedOut[index])
+        {
+            Console.WriteLine($"\n[INFO] '{books[index]}' is not checked out at the moment.\n");
+            return;
+        }
+
+        isCheckedOut[index] = false;
+        borrowedCount = Math.Max(0, borrowedCount - 1);
+        Console.WriteLine($"\n[SUCCESS] '{books[index]}' has been checked in.\n");
     }
 }
